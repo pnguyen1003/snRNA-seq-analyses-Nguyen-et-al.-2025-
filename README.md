@@ -1,2 +1,2 @@
-# snRNA-seq-analyses (Santiago et al., 2025)
-R scripts used in Santiago et al., 2025
+# snRNA-seq-analyses (Nguyen et al., 2025)
+R scripts used in Nguyen et al., 2025
