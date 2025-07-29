@@ -1,0 +1,384 @@
+---
+title: "Seurat_Code_QC_2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+If you want to add highlighted code chunk (like above), command + option I 
+
+```{r}
+#install.packages("BiocManager")
+#BiocManager::install("Seurat")
+#BiocManager::install("ggplot2")
+#install.packages("dplR")
+#install.packages("ape")
+#install.packages("cowplot")
+#install.packages("Matrix")
+#install.packages("knitr")
+#install.packages("igraph")
+```
+
+```{r}
+library(igraph)
+library(Seurat)
+library(ggplot2)
+library(dplyr)
+library(ape)
+library(cowplot)
+library(Matrix)
+```
+
+*Set variables for downstream functions*
+```{r}
+#Specify your preferred directory for all input + output
+setwd("/Users/phinguyen/Library/CloudStorage/Dropbox/Hen Lab/Data/SingleCell RNA-seq/2_AllCells_Early-Late-Flx_June 2023")
+
+#Specify where your matrix files/raw data are
+datafolder = "/Users/phinguyen/Library/CloudStorage/Dropbox/Hen Lab/Data/SingleCell RNA-seq/2_AllCells_Early-Late-Flx_June 2023/Counts Data/Run 1"
+
+#Add in any folder name within each sample that leads to your data files: 
+innerfolder = NULL
+
+#Specify what kind of data you have: "CellRanger" Output (barcodes + matrix .tsv files) or "counts" data (usually something ending in counts.tsv)
+datatype = "CellRanger"
+
+#Specifications for future thresholding steps. Set minimum cutoffs for genes that are expressed in at least x cell (min.cells) and genes/cell (min.features). Keep all genes expressed in >=3 cells and keep all cells expressing >50 genes.
+min.cells = 3
+min.features = 50
+
+#Can name project something descriptive
+project<-"2" 
+
+#Specify your organism; please capitalize the first letter (i.e. "Mouse", "Human","Zebrafish","Rat")
+organism = "Mouse"
+
+#metrics you want to look at for QC
+m = c("nCount_RNA","nFeature_RNA","percent.mito")
+```
+
+
+Create an object with the folder names that you can use to open each sample folder when you need it. The following code will allow you to open all the folders in sequence. 
+```{r}
+# This is a good check that your sample folders are where you expect them to be
+ids = list.files(file.path(datafolder))
+ids
+```
+
+
+For each ID (i.e. folder), read in the data and change the column names to look like: "Barcode - id". If the second chunk doesn't work, can try manually unzipping the file. Make sure to change the 'filename' extension above. 
+```{r}
+# Read in raw CellRanger data
+if (datatype == "CellRanger"){
+  d10x.data = sapply(ids, function(id){
+    d10x = Read10X(file.path(datafolder,id)) #read in each matrix
+    colnames(d10x) = paste(sapply(strsplit(colnames(d10x),split="-"),'[[',1L),id,sep="-") 
+    d10x
+  })
+}
+# The d10x.data object is a list of arrays whose columns consist of cell IDs and whose rows represent genes. 
+
+if (datatype == "counts"){
+  d10x.data = sapply(ids, function(id){
+    d10x =as.sparse(read.table(gzfile(file.path(dir,datafolder,id,filename)),sep = '\t',header = T,row.names = 1))
+    colnames(d10x) = paste(sapply(strsplit(colnames(d10x),split="-"),'[[',1L),id,sep="-")
+    d10x
+  })
+}
+
+experiment.data<-do.call("cbind",d10x.data)
+# Make experiment.data, a single array with as many columns as total cells. 
+```
+
+
+Create a seurat object, keeping genes that are in >3 cells, cells with >50 genes (or whatever you set above)
+
+"names.field" and "names.delim" determines the input identity for each sample. IE if the cells are named "barcode - id", the "name" for each sample (listed in orig.ident) will be id.  
+```{r}
+# Create the Seurat Object, which takes the individual matrix and combines it into a format that Seurat can use
+sobject <- CreateSeuratObject(
+        experiment.data, # experiment.data is reformatted, read-in data specified in above chunk
+        project = project, # project name from original chunk - "AgingSC"
+        min.cells = min.cells, # min.cells and min.features are specified in original chunk
+        min.features = min.features,
+        names.field = 2, # determine input identity. put the "id" from above into meta data
+        names.delim = "\\-")
+
+#check 
+table(sobject$orig.ident)
+head(sobject@meta.data, 5)
+```
+
+
+Calculate mitochondrial and ribosomal content, add as metadata to each cell (column). Percent mito is calculated by dividing one matrix by another matrix to get a percentage. Grep searches through rownames of the data (i.e. genes) for anything that starts with mt. 
+```{r}
+if (organism %in% c("Mouse","Rat")){
+  sobject <- PercentageFeatureSet(sobject, pattern = "^mt-", col.name = "percent.mito")
+  sobject <- PercentageFeatureSet(sobject, pattern = "^Rp", col.name = "percent.ribo")
+}
+if (organism == "Human"){
+  sobject <- PercentageFeatureSet(sobject, pattern = "^MT-", col.name = "percent.mito")
+  sobject <- PercentageFeatureSet(sobject, pattern = "^RP", col.name = "percent.ribo")
+}
+if (organism == "Zebrafish"){
+  sobject <- PercentageFeatureSet(sobject, pattern = "^mt-", col.name = "percent.mito")
+  sobject <- PercentageFeatureSet(sobject, pattern = "^rp", col.name = "percent.ribo")
+}
+```
+
+
+Add sample descriptions as metadata columns.
+```{r}
+#Add in metadata. You may want to run the next chunk and then return to edit this so it is in the same order as "ids"
+condition = c("Cort","Cort","Cort", "Flx_5d","Flx_5d","Flx_5d", "Flx_3wks","Flx_3wks","Flx_3wks")
+ID = c("C1","C4","C5","Flx-S3","Flx-S4","Flx-S5","Flx-L1","Flx-L4","Flx-L5")
+
+samplename = as.character(sobject$orig.ident) 
+names(samplename) = names(sobject$orig.ident)
+
+#Create or read in a metadata file
+meta = as.data.frame(cbind(condition, ID))
+# data.frame function adds character vectors to the numeric data of the metadata matrix. Prevents implicit coercion where R would convert numeric values to character values
+rownames(meta) = ids #ids specified above as data file names
+
+meta
+
+#replace the names with any column of "meta" - add anything to meta and the following if necessary
+#Pull out the item within meta that corresponds to each samplename(orig.ident) and the correct column (age/condition/etc.)
+ID = sapply(samplename,function(x)meta[x,"ID"])
+condition = sapply(samplename,function(x)meta[x,"condition"])
+
+#add new metadata columns
+sobject$ID = ID
+sobject$condition = condition
+
+#check
+table(sobject$ID,sobject$condition)
+sobject[[]]
+```
+
+
+
+*QC - decide on final filtering parameters, look for clear outliers/differences between samples.*
+
+Plot the number of cells each gene is represented by - i.e. how many cells express any given gene? Ordered from rare to common genes. So you might consider focusing on genes that are relatively well expressed across the sample, or you might care about genes expressed only in a small subset of cells. The >=2 refers to read number per cell. 
+```{r}
+plot(sort(Matrix::rowSums(GetAssayData(sobject)>=3)),xlab="gene rank",ylab="number of cells",main="Cells per genes ( >= 3 )")
+
+# note previously set cutoff - only include genes expressed in 3 or more cells
+```
+
+Violin Plots
+Function to make an annotated violin plot
+```{r}
+anno_vln = function(seurat_object = sobject, metric = "nCount_RNA", group = "orig.ident"){ #have group = "orig.ident" if first time running through
+  
+  #specify number of categories
+  n = length(levels(seurat_object@meta.data[,group]))
+
+  #make a violin plot
+  a = VlnPlot(seurat_object, metric,
+              group.by = group,
+              pt.size = 0,
+              log = F,
+              cols = rep("lightgrey",n))
+
+  #make a simple function that quantifies percentiles for each column
+  add.percentiles = function(x) {
+    r = quantile(x, probs = seq(0,1,1))
+    r
+  }
+
+  a + geom_boxplot(width = 0.05,outlier.size = 0,notchwidth = 10,notch = T) + theme_bw() + 
+    theme(axis.text = element_text(size = 18), legend.text = element_text(size = 15), plot.title = element_text(size = 20), axis.title.x = element_text(size = 0), panel.grid = element_blank(), legend.position = "none", panel.border = element_rect(color = "black", size = 1), aspect.ratio=0.75)
+}
+```
+
+
+Plot each metric. Red = 0%, Purple = 20%, Yellow = 40%, Black = 50%,Green = 60%, Blue = 80%, Grey = 100% percentile
+```{r}
+#Save graphs
+dir = "/Users/phinguyen/Library/CloudStorage/Dropbox/Hen Lab/Data/SingleCell RNA-seq/2_AllCells_Early-Late-Flx_June 2023/CellRanger-6.1.2/Plots/QC"
+QCfolder = "QC"
+
+for (i in m){
+  graph = anno_vln(metric = i)
+  setEPS()
+  postscript(file.path(dir,QCfolder,paste0(i,project,".eps")))
+  print(graph)
+  dev.off()
+}
+
+#print graphs to console
+for (i in m){
+  graph = anno_vln(metric = i)
+  print(graph)
+}
+```
+
+*****
+
+A. Gene Plot, scatter plot of gene expression across cells, (colored by sample) - sequencing depth relative to genes; looking for similarity across samples. Some cell types having relatively few genes, but highly expressed, could show up as a second arc below the one seen here (should contain all samples though)
+B. % Mitochondrial RNA vs Feature counts
+```{r}
+plot1 <- FeatureScatter(sobject, feature1 = "nCount_RNA", feature2 = "percent.mito")
+plot2 <- FeatureScatter(sobject, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+
+plot1
+plot2
+```
+
+
+```{r}
+Idents(sobject) = "ID"
+#Save graphs
+for (i in 1:(length(m)-1)){
+  graph = FeatureScatter(sobject,m[i],m[i+1])+ theme_bw() + theme(axis.text = element_text(size = 12), legend.text = element_text(size = 12), plot.title = element_text(size = 10), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15))
+  setEPS()
+  postscript(file.path(dir,QCfolder,paste0(m[i],"_",m[i+1],project,"scatter.eps")))
+  print(graph)
+  dev.off()
+}
+
+#print graphs
+for (i in 1:(length(m)-1)){
+  graph = FeatureScatter(sobject,m[i],m[i+1])+ theme_bw() + theme(axis.text = element_text(size = 12), legend.text = element_text(size = 12), plot.title = element_text(size = 10), axis.title.x = element_text(size = 15), axis.title.y = element_text(size = 15))
+  print(graph)
+}
+
+#Returns the percentile ranking of each cell by unique genes (nFeature_RNA)
+#Can use this to help set max gene cutoff with 5% doublet rate in mind
+print("Cells by percentile of counts")
+do.call("cbind", tapply(sobject$nCount_RNA,sobject$orig.ident,quantile,probs=seq(0,1,0.05))) #seq() is saying show range from 0 to 1 with increment 0.05
+print("Cells by percentile of unique genes")
+do.call("cbind", tapply(sobject$nFeature_RNA,sobject$orig.ident,quantile,probs=seq(0,1,0.05)))
+
+```
+
+
+Set threshold cutoffs
+```{r}
+# mitochondria genes - range for mito genes
+mlo = -Inf
+mhi = 5
+# counts - total number of UMIs/mRNA units
+clo = 1800
+chi = 12450
+# features - number of distinct genes
+flo = 1200
+fhi = 3600
+```
+
+
+Violin plot of 1) number of genes, 2) number of UMI (counts) and 3) percent mitochondrial genes; save with lines that show cutoffs
+```{r}
+m = c("nCount_RNA","nFeature_RNA","percent.mito")
+
+group = "ID"
+#Make a table with your cutoff values above
+tablelow = c(clo,flo,mlo)
+tablehigh = c(chi,fhi,mhi)
+t = as.data.frame(rbind(tablelow,tablehigh))
+colnames(t) = m #m are the metrics for QC specified in original chunk
+
+#Save graphs
+dir = "/Users/phinguyen/Library/CloudStorage/Dropbox/Hen Lab/Data/SingleCell RNA-seq/1_Neurons-Microglia_Veh-Cort-Flx-ECS_May 2022/Plots/QC"
+
+for (i in 1:ncol(t)){
+   metric = colnames(t)[i]
+  low = t[1,i]
+  high = t[2,i]
+  graph = anno_vln(metric = metric) + geom_abline(intercept = high, slope = 0, linetype = "dashed",color = "red", size = 0.8) + geom_abline(intercept = low, slope = 0, linetype = "dashed",color = "red", size = .8) + theme(axis.text.x = element_text(angle = 40, hjust = 1, vjust = 1), axis.text.y = element_text(size = 10), legend.position = "none") 
+  
+  setEPS()
+  postscript(file.path(dir,paste0(m[i],"_",m[i+1],"scatter.eps")))
+  
+  
+  print(graph)
+  dev.off()
+}
+
+#print graphs
+for (i in 1:ncol(t)){
+   metric = colnames(t)[i]
+  low = t[1,i]
+  high = t[2,i]
+  graph = anno_vln(metric = metric) + geom_abline(intercept = high, slope = 0, linetype = "dashed",color = "red", size = 0.8) + geom_abline(intercept = low, slope = 0, linetype = "dashed",color = "red", size = .8) + theme(axis.text.x = element_text(angle = 40, hjust = 1, vjust = 1), axis.text.y = element_text(size = 10), legend.position = "none") 
+  print(graph)
+}
+```
+
+
+Scatter plots with lines to show cutoffs
+```{r}
+#Save graphs
+for (i in 1:(length(colnames(t))-1)){
+  xm = colnames(t)[i]
+  ym = colnames(t)[i+1]
+  xlow = t[1,i]
+  xhigh = t[2,i]
+  ylow = t[1,i+1]
+  yhigh = t[2,i+1]
+  graph = FeatureScatter(sobject,xm,ym)+ theme_bw() + geom_vline(xintercept = xlow, linetype = "dashed",color = "black", size = .8) + geom_vline(xintercept = xhigh, linetype = "dashed",color = "red", size = .8)+ geom_hline(yintercept = ylow, linetype = "dashed",color = "black", size = .8)  + geom_hline(yintercept = yhigh, linetype = "dashed",color = "red", size = .8) + theme(axis.text = element_text(size = 15), legend.text = element_text(size = 18), plot.title = element_text(size = 10), axis.title.x = element_text(size = 18), axis.title.y = element_text(size = 18)) + guides(color = guide_legend(override.aes = list(size = 4)))
+  setEPS()
+  postscript(file.path(dir,QCfolder,paste0(m[i],"_",m[i+1],project,"scatter_withcutoffs.eps")))
+  print(graph)
+  dev.off()
+}
+
+#print graphs
+for (i in 1:(length(colnames(t))-1)){
+  xm = colnames(t)[i]
+  ym = colnames(t)[i+1]
+  xlow = t[1,i]
+  xhigh = t[2,i]
+  
+  ylow = t[1,i+1]
+  yhigh = t[2,i+1]
+  
+  graph = FeatureScatter(sobject,xm,ym)+ theme_bw() + geom_vline(xintercept = xlow, linetype = "dashed",color = "black", size = .8) + geom_vline(xintercept = xhigh, linetype = "dashed",color = "red", size = .8)+ geom_hline(yintercept = ylow, linetype = "dashed",color = "black", size = .8)  + geom_hline(yintercept = yhigh, linetype = "dashed",color = "red", size = .8) + theme(axis.text = element_text(size = 15), legend.text = element_text(size = 18), plot.title = element_text(size = 10), axis.title.x = element_text(size = 18), axis.title.y = element_text(size = 18)) + guides(color = guide_legend(override.aes = list(size = 4)))
+  print(graph)
+}
+
+```
+******
+
+
+```{r}
+# Can re-specify what you want the file name to be
+project = "2_all cells"
+
+save(sobject,file = file.path(dir,"Seurat",paste0(project,"_beforeQC.RData")))
+```
+
+Subset the data. Printing tables lets you see the progression as you tighten your QC cutoffs. 
+```{r}
+# This will apply the threshold cutoffs above to your samples
+print("initial")
+table(sobject$orig.ident) #print out initial cell counts
+
+print("mito")
+sobject = subset(sobject, subset = percent.mito > mlo & percent.mito < mhi) #subset mitochondria
+table(sobject$orig.ident) #new cell counts
+
+print("ncount")
+sobject = subset(sobject, subset = nCount_RNA > clo & nCount_RNA < chi)
+table(sobject$orig.ident)
+
+print("nfeature")
+sobject = subset(sobject, subset = nFeature_RNA > flo & nFeature_RNA < fhi)
+table(sobject$orig.ident)
+```
+
+```{r}
+#save 
+dir = "/Users/phinguyen/Library/CloudStorage/Dropbox/Hen Lab/Data/SingleCell RNA-seq/2_AllCells_Early-Late-Flx_June 2023/Seurat/Run 1/Raw"
+
+save(sobject,file = file.path(dir,paste0("2_all cells_afterQC_Run 1.RData")))
+```
+******

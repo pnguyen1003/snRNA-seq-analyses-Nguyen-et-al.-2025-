@@ -1,0 +1,281 @@
+---
+title: "Downsampling to smallest cell population for FindMarkers DEG comparisons across cell-types and conditions"
+output: html_document
+date: "2024-05-06"
+---
+
+
+```{r}
+library(Seurat)
+library(ggplot2)
+library(dplyr)
+library(ape)
+library(cowplot)
+library(Matrix)
+library(MAST)
+library(xlsx) 
+```
+
+
+```{r}
+Idents(sobject_downsampled) = "condition"
+levels(sobject_downsampled)
+
+pt.size = 0.15
+
+Cluster_Highlight_Plot(sobject_downsampled, cluster_name = "Cort", highlight_color = "brown2", pt.size = pt.size,
+    background_color = "gray75") + ggplot2::ggtitle(label = "Corticosterone") +
+              theme(aspect.ratio=1, # sets square plot
+              axis.title.x = element_text(hjust=0), axis.title.y = element_text(hjust=0), # adjust axes labels to corner
+              axis.line = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), # hides axes and ticks
+              panel.border = element_rect(colour = "black", fill=NA, size=1)) + # add border
+              labs(y= "UMAP 2", x = "UMAP 1") 
+
+Cluster_Highlight_Plot(sobject_downsampled, cluster_name = "Flx_5d", highlight_color = "blue4", pt.size = pt.size,
+    background_color = "gray75") + ggplot2::ggtitle(label = "Fluoxetine (5 days)") +
+              theme(aspect.ratio=1, # sets square plot
+              axis.title.x = element_text(hjust=0), axis.title.y = element_text(hjust=0), # adjust axes labels to corner
+              axis.line = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), # hides axes and ticks
+              panel.border = element_rect(colour = "black", fill=NA, size=1)) + # add border
+              labs(y= "UMAP 2", x = "UMAP 1") 
+
+Cluster_Highlight_Plot(sobject_downsampled, cluster_name = "Flx_3wks", highlight_color = "cornflowerblue", pt.size = pt.size,
+    background_color = "gray75") + ggplot2::ggtitle(label = "Fluoxetine (3 weeks)") +
+              theme(aspect.ratio=1, # sets square plot
+              axis.title.x = element_text(hjust=0), axis.title.y = element_text(hjust=0), # adjust axes labels to corner
+              axis.line = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), # hides axes and ticks
+              panel.border = element_rect(colour = "black", fill=NA, size=1)) + # add border
+              labs(y= "UMAP 2", x = "UMAP 1") 
+
+```
+
+
+Calculate Differentially Expressed genes.
+Use FindAllMarkers and FindMarkers functions for the identification of all markers for each cluster- this analysis compares each cluster against all others and outputs the genes that are differentially expressed/present.
+
+*FIND MARKERS* - compare specific clusters vs specific clusters
+```{r}
+Idents(sobject_downsampled) = "condition"
+table(sobject_downsampled$condition)
+
+# Find all DEG's of cluster x. If the ident.2 parameter is omitted or set to NULL, FindMarkers will test for differentially expressed features between the group specified by ident.1 and all other cells.
+
+clusterX.markers <- FindMarkers(sobject_downsampled, ident.1 = "Flx_3wks", ident.2 = "Cort", 
+                                min.pct = 0.0,
+                                logfc.threshold = 0.0
+                                ) 
+
+dir= "/Users/phinguyen/Library/CloudStorage/Dropbox/Hen Lab/Data/SingleCell RNA-seq/2_AllCells_Early-Late-Flx_June 2023/CellRanger-6.1.2/Spreadsheets/DGGCs/For Volcano"
+
+cell = "2_DG_Flx_3wks vs Cort_Downsampled 3041 mGC per mouse"
+write.csv(clusterX.markers,file = file.path(dir,
+          paste0(cell,".csv")))
+```
+
+
+*FIND MARKERS* - DEGs by cell-type (downsampled to 588) by condition
+```{r}
+dir= "/Users/phinguyen/Library/CloudStorage/Dropbox/Hen Lab/Data/SingleCell RNA-seq/2_AllCells_Early-Late-Flx_June 2023/CellRanger-6.1.2/Spreadsheets/DEG_cell type analysis/By Cell_Types_Downsampled to match by cond_FDR"
+
+###
+
+Idents(DG) = "condition"
+
+degs = FindMarkers(DG, ident.1 = "Flx_3wks", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "DG"
+group = "_Flx_3wks vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+degs = FindMarkers(DG, ident.1 = "Flx_5d", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "DG"
+group = "_Flx_5d vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+###
+
+Idents(Astrocytes) = "condition"
+
+degs = FindMarkers(Astrocytes, ident.1 = "Flx_3wks", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "Astrocytes"
+group = "_Flx_3wks vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+degs = FindMarkers(Astrocytes, ident.1 = "Flx_5d", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "Astrocytes"
+group = "_Flx_5d vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+###
+
+Idents(CA1) = "condition"
+
+degs = FindMarkers(CA1, ident.1 = "Flx_3wks", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "CA1"
+group = "_Flx_3wks vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+degs = FindMarkers(CA1, ident.1 = "Flx_5d", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "CA1"
+group = "_Flx_5d vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+###
+
+Idents(CA2) = "condition"
+
+degs = FindMarkers(CA2, ident.1 = "Flx_3wks", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "CA2"
+group = "_Flx_3wks vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+degs = FindMarkers(CA2, ident.1 = "Flx_5d", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "CA2"
+group = "_Flx_5d vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+###
+
+Idents(CA3) = "condition"
+
+degs = FindMarkers(CA3, ident.1 = "Flx_3wks", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "CA3"
+group = "_Flx_3wks vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+degs = FindMarkers(CA3, ident.1 = "Flx_5d", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "CA3"
+group = "_Flx_5d vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+###
+
+Idents(DG_Young) = "condition"
+
+degs = FindMarkers(DG_Young, ident.1 = "Flx_3wks", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "DG_Young"
+group = "_Flx_3wks vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+degs = FindMarkers(DG_Young, ident.1 = "Flx_5d", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "DG_Young"
+group = "_Flx_5d vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+###
+
+Idents(GABA) = "condition"
+
+degs = FindMarkers(GABA, ident.1 = "Flx_3wks", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "GABA"
+group = "_Flx_3wks vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+degs = FindMarkers(GABA, ident.1 = "Flx_5d", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "GABA"
+group = "_Flx_5d vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+###
+
+Idents(Microglia) = "condition"
+
+degs = FindMarkers(Microglia, ident.1 = "Flx_3wks", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "Microglia"
+group = "_Flx_3wks vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+degs = FindMarkers(Microglia, ident.1 = "Flx_5d", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "Microglia"
+group = "_Flx_5d vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+###
+
+Idents(Mossy) = "condition"
+
+degs = FindMarkers(Mossy, ident.1 = "Flx_3wks", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "Mossy"
+group = "_Flx_3wks vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+degs = FindMarkers(Mossy, ident.1 = "Flx_5d", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "Mossy"
+group = "_Flx_5d vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+###
+
+Idents(Oligodendrocytes) = "condition"
+
+degs = FindMarkers(Oligodendrocytes, ident.1 = "Flx_3wks", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "Oligodendrocytes"
+group = "_Flx_3wks vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+degs = FindMarkers(Oligodendrocytes, ident.1 = "Flx_5d", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "Oligodendrocytes"
+group = "_Flx_5d vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+###
+
+Idents(OPCs) = "condition"
+
+degs = FindMarkers(OPCs, ident.1 = "Flx_3wks", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "OPCs"
+group = "_Flx_3wks vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+degs = FindMarkers(OPCs, ident.1 = "Flx_5d", ident.2 = "Cort", logfc.threshold = 0, min.pct = 0, min.diff.pct = -Inf)
+degs$p_val_adj = p.adjust(degs$p_val, method='fdr')
+
+cell = "OPCs"
+group = "_Flx_5d vs Cort"
+write.csv(degs, file = file.path(dir,paste0(cell,group,".csv")))
+
+###
+
+```
+

@@ -1,0 +1,382 @@
+---
+title: "Gene lists"
+output: html_document
+date: "2024-07-04"
+---
+
+
+```{r}
+library(Hmisc)
+library(scCustomize)
+library(openxlsx)
+library(ggdark)
+library(Seurat)
+library(ggplot2)
+```
+
+
+Top 100 genes from From Hochgerner_age_celltype_P132_GC-adult vs P5_Immature-GC
+Hochgerner et al., 2018, Nat Neuro
+*P5_GC_1*
+*P132_GC_1*
+```{r}
+# From Hochgerner_age_celltype_P132_GC-adult vs P5_Immature-GC
+
+# Top 100 Genes that are upregulated in juvenile GCs (defined by FindMarkers comparison of P132_GC-adult vs P5_Immature-GC metadata clusters)
+P5_GC <- Cs(
+Crip2,
+Pgls,
+Cdk4,
+C530008M17Rik,
+Mapk6,
+L1cam,
+Prkra,
+Neurod1,
+Zfp57,
+Cadm4,
+Csdc2,
+Atat1,
+Sbk1,
+Sh3yl1,
+Sqle,
+Arhgdig,
+Marcksl1,
+Camk4,
+Pgap1,
+Fgfr1,
+Elavl2,
+Tubb5,
+Ier2,
+H2afy2,
+Rerg,
+Mad2l2,
+Kif21b,
+Gm9844,
+Syce2,
+Stmn1,
+Nans,
+Fabp7,
+Fxyd6,
+Gm11837,
+Gm17750,
+Rnd2,
+Ppp1r14c,
+Myl6b,
+Idh1,
+Rac3,
+Elmo1,
+Dner,
+Eps8,
+Rnf121,
+Cntnap2,
+Gm10320,
+Tmsb10,
+Sox11,
+Fabp5,
+Pafah1b3,
+Tuba1a,
+Csrp2,
+Cks1b,
+Pcdh15,
+Dap,
+Sox4,
+Cxadr,
+Tubb3,
+Shd,
+Adamts18,
+Midn,
+Sstr2,
+Meis2,
+Rgs6,
+Mtss1,
+Smim18,
+Gap43,
+Dcx,
+Stmn2,
+Hmgb3,
+Nnat,
+Dpysl5,
+Frmd3,
+Fezf2,
+Traf4,
+Sv2b,
+Arl4c,
+Bach2,
+Carhsp1,
+Ttc28,
+Tubb2b,
+Dpysl3,
+Rbp1,
+Fos,
+Socs2,
+Neurod6,
+Calb2,
+Ddah2,
+Hba-a1,
+Fxyd7,
+Col12a1,
+Mex3a,
+Fnbp1l,
+Trim67,
+St8sia2,
+Hbb-bs,
+Sema3c,
+Cd24a,
+Draxin,
+Crabp1,
+Igfbpl1,
+)
+
+# Top 100 Genes that are up in mature GCs (defined by FindMarkers comparison of P132_GC-adult vs P5_Immature-GC metadata clusters)
+P132_GC <- Cs(
+Rassf8,
+Hlf,
+Ano3,
+Zmym1,
+Nptx1,
+Tanc1,
+Rasl10a,
+Gng13,
+Scn2b,
+Zfp365,
+Slc30a3,
+Ptk2b,
+Ddn,
+Gas7,
+Fam19a1,
+Ahcyl2,
+Atp1a3,
+Pitpnm2,
+PISD,
+Syne1,
+Cpne6,
+Grin2a,
+Ncdn,
+Galnt1,
+Vstm2a,
+Faim2,
+Ntng1,
+Dock10,
+Mt1,
+Mkl2,
+Gabra1,
+Slc4a10,
+Camkk1,
+Slc24a2,
+Camk2n1,
+Klhl2,
+Nrsn1,
+Sorl1,
+Lypd1,
+Gm10605,
+Mink1,
+Cdk17,
+Itm2c,
+A830018L16Rik,
+Chn1,
+Tmem243,
+Slc12a5,
+Lgi1,
+Wipf3,
+Ppp3r1,
+Tppp,
+Unc80,
+Map2k1,
+Pcdh20,
+Agap2,
+Rprml,
+Dgkz,
+Ndrg4,
+Gm26825,
+Hpca,
+Dnm1,
+Hpcal4,
+Nmt1,
+Ptprn,
+Cox17,
+Rasgrf1,
+Gabra4,
+Lmo3,
+Phyhip,
+Tef,
+Cdk14,
+Pcdh19,
+Slc7a14,
+Wasf1,
+Pgbd5,
+Ppp3ca,
+Adcy1,
+Nrn1,
+Eno2,
+Scn1b,
+Camk2a,
+Abr,
+Fam126b,
+Col25a1,
+Pcsk2,
+Kdm7a,
+Slc17a7,
+Gria3,
+Reps2,
+Pgm2l1,
+Atp6v1g2,
+Pop5,
+Gm27032,
+Kcnj3,
+Rapgef2,
+Mapk1,
+Ramp1,
+App,
+Wbp11,
+Cnksr2,
+Impact
+)
+
+sobject <- AddModuleScore(sobject,
+                  features = list(P5_GC),
+                  name= "P5_GC_")
+
+sobject <- AddModuleScore(sobject,
+                  features = list(P132_GC),
+                  name= "P132_GC_")
+```
+
+Regeneration-Associated Genes 
+Matson et al., 2022, Nature Communications
+*RAG_1*
+```{r}
+RAG <- Cs(Atf3, Sprr1a, Tnfrsf12a, Sox11, Klf6, Bdnf, Adcyap1, Gap43)
+
+sobject <- AddModuleScore(sobject,
+                  features = list(RAG),
+                  name= "RAG_")
+```
+
+4 week abGC vs 8 week abGC - ascl-creER x sun1-GFP
+Rasetto et al 2024 Sci Adv from Alejandro Schinder
+*Four_wk_abGC_1*
+```{r}
+#top 100 genes upregulated in 4w abGCs vs 8w
+
+Four_wk_abGC <- Cs(Cacng4, Gm15398, Gm26905, Kcnip1,Fam163a, Gm16159, Lemd1, Col15a1, Socs2, Triobp, Macrod1, Aldh1l2, Draxin,Gm26936, Fgf1, Filip1l, Mad2l2, Nkain1, Adamts18, Myo16, Taco1, Shb, Gm26625, Nell1, Vav2, B430010I23Rik, Sema4g, Tmem44, Lypd6, Sox11, Slc17a6, Chn2, A930011G23Rik, Sox4, Kcnh8, Gm11146, Gm16279, Pard3bos1, Zfp57, Flrt1, Clcn5, Zfp558, Dner, Fnbp1l, Cntnap4, Gmip, Galntl6.1, Gm4128, Phykpl, Pcdh15, Adam12, Elavl2, Sh3bp2, Lppr3, Gm13944, Igdcc3, Sstr2, Sox2ot, Dpysl3, Adam19, Gm15645, Col11a1, Gm15563, Fam196a, St6gal1, C530008M17Rik, Mtss1, Col12a1, Sh3bp4, Calb2, Igfbpl1, Olfm2, Slc24a5, Gm26735, Fhod3, Pappa2, Psd2, Slco5a1, Myo1b, L1cam, St8sia2, Prrg1, Ccdc88c, Angpt1, Podxl2, Gm37679, Cnr1, Kif21b, Bahcc1, Prkd3, Gm36992, Hunk, Rgs6, Syt9, Frmd3)
+
+sobject <- AddModuleScore(sobject,
+                  features = list(Four_wk_abGC),
+                  name= "Four_wk_abGC_")
+```
+
+DG GCs after 2mo EE (young mice) vs home cage
+from Raul et al., 2024 Nat Comms (https://pubmed.ncbi.nlm.nih.gov/39013876/)
+*EE_top500_1*
+*EE_top100_1*
+```{r}
+EE_top500 <- Cs(Nrp1, AC149090.1, Pcdh7, Nrxn3, Tnr, C1ql3, Chst9, Malat1, Hspa5, Dgkb, Rgs6, Pde10a, Zbtb20, Hspa8, Ubash3b, Brinp1, Rimbp2, Chgb, Cdh10, Parp8, Hsp90b1, Mllt3, A330102I10Rik, Pcsk1n, Sparcl1, Map1b, Camk2a, Calr, Phf20l1, Cyp7b1, Clstn2, Prickle1, Kcnq3, Rnf112, Dlgap1, Trim9, Nrn1, Acvr1c, Syn3, Gabrb1, Fbxl7, Mical2, Arpp21, Pcsk2, Sntb2, Kirrel3, Gabbr2, Cdh9, Grm7, Anks1b, Prkag2, Nrg3, Csmd2, Dnajc1, Hectd2, Trpc4, Pdzd2, Mast4, Gm20642, Lrrtm3, Zeb2, Slc35f3, Sez6l, Trim2, Grin2a, Nr3c2, Tspan5, Maml2, Slc2a13, Cacna1c, Hsp90ab1, Itpr1, Atp2b1, Kcnip3, Ksr1, Focad, Tanc1, Arhgap39, Pitpnc1, Auts2, Npy, Acvr1, Dscam, Atp6v0b, Pcdh17, Prkca, Atp6v0a1, Unc79, Sorbs2, Myt1l, Trpm3, Adgrl3, Grm1, Caly, Map2, Sipa1l3, Polb, Cdh2, Tra2a, Cacna2d3, Epha4, Nkain3, Tcf4, Maml3, Pdia6, Plxna4, Hnrnph1, Cdr1os, Ntrk3, Rabgap1l, Rfx3, Slc7a14, Kdm7a, Osbp2, Ank3, Prkce, St18, Grin2b, Cnot3, Car10, Nell2, Hivep2, Ube2e2, Sorl1, Sh3kbp1, Nedd4l, Fam135b, Zmiz1, Cpt1c, Fstl4, Top1, Cdc42bpa, Doc2b, Il1rap, Vps13c, Syt1, Prdm5, Pard3, Ryr2, Sorcs3, Dock4, Aplp2, Negr1, Lrpap1, Rbfox3, Rnf19a, Ptpra, Dscaml1, Tmeff2, Chl1, Klhl2, St7, Dock10, Lgi1, Mycbp2, Olfml2b, Gse1, Nhsl2, Ext1, Pde4d, Neurod2, Dpf3, Nfasc, Pdia3, Cacna1e, Ttc3, Pex5l, Erc2, Pabpc4, Adcy8, Nol4, Chsy3, Etv1, Snhg11, Manf, Rtn4rl1, Galnt17, Rasl10a, Epha5, Akap6, Glt8d1, Slc25a27, Rnasek, Sipa1l1, Bach2, Zbtb16, Penk, Prpf4b, Kcnj6, Kcnq1ot1, Rapgef4, Zdhhc14, Ssh2, A330023F24Rik, Ptprj, Adgrb3, Nudcd3, Adcy9, Plekha5, Specc1, Cspp1, C2cd5, Ptpre, Dlgap2, Slc4a4, Rufy3, Ppp1r9a, Prrt1, Hsp90aa1, Aff2, Lrp1b, Plcl1, Map6, Lrrc7, Ncam2, Gm34567, Inf2, Sema6d, Amph, Unc5d, Nfia, Ctnnd2, Foxp1, Krit1, Hsph1, Zfp608, Efr3a, Nebl, Fgfr1, Hectd2os, Spock3, Nsf, Tbc1d5, Arl6ip1, A930015D03Rik, Dpp6, Zfp804a, Gabra2, Xpr1,Cblb, Chd9, Ptk2b, Nfib, Glis3, Snhg14, Phip, Cbfa2t3, Large1, Stim2, Ptchd4, Ttll11, Gm6999, Herc2, Sorbs1, Fam155a, E130308A19Rik, Mpdz, Slc4a7, Dip2b, Wipf3, Klhl29, Slc24a3, Phf21a, mt-Atp6, Hpca, Carmil1, Igf1r, Plcb1, Dapk1, Dtna, Magi2, Bdnf, Cnih2, Camk1d, Pde4a, Tmem150c, Pgbd5, Dst, Gria1, Aff3, Tle4, Chst1, Ptk2, mt-Co2, Mical3, Bsn, Zdhhc23, Psme4, Meg3, Sorcs2, Sphkap, Slc44a1, Trio, Cnih3, Xbp1, Prkar1b, Aopep, Plekhg5, Tenm1, Tmem108, Gprasp1, Iqgap2, Smoc2, Nlk, Nrgn, Eif4g3, Clvs1, Eml6, Srpk2, Cep112, Dcc, Limch1, Arsj, Erc1, Zfp207, Pam, Mmp17, Lrrc3b, Ppm1h, Frmd4b, Slc25a3, Sybu, Plxna2, Gnal, Sgcz, Ptprn2, Cers4, Cpe, Enox1, Gria2, Usp29, Kcnc1, Adamts17, mt-Co3, Zfp536, Olfm1, Chst11, P4ha1, Sel1l, Arl6ip5, Sema5a, Osbpl6, Foxn3, Dalrd3, Gm44257, Snph, Grm2, B4galt1, Mir99ahg, Nmnat2, Mitf, Slit1, Son, Cst3, Sbf1, Lurap1l, Zmynd8, Npdc1, Mrtfa, Cacnb2, Ncor1, Dgkg, Map2k4, Thy1, Cnpy2, Aig1, Arhgap12, Rph3al, Atrnl1, Emsy, Klhl3, Sipa1l2, Celf2, Rasgrp1, Nktr, Cacna1a, C1ql2, Tanc2, Arhgef12, Gm36975, Plekha2, Crebbp, Pcdh19, Atp6v0c, Dbn1, Gm40841, Ylpm1, Sec62, Ap2a2, Rbm28, Abcb10, Scn3b, Camta1, Exoc4, Celf4, R3hdm1, Pde7b, Selenok, Arid1b, Lingo2, Fnip1, Crlf1, Dok6, Xkr6, Rtn4r, Phf20, Sema3e, Kcnc3, Dot1l, Bcl11b, Ubb, Reep3, Syndig1, Tnfrsf25, Serinc2, Pcnx, Ube2e3, Rere, Kcnma1, Kif21a, Jmjd1c, Ktn1, Bmerb1, Sdccag8, Fkbp2, Ago2, Kcnq2, Tecr, Adgrb1, Csrnp3, Syn2, Dmxl1, Sfpq, Ttc4, Setbp1, Tia1, Coro2b, Dock9, Flnb, Scg2, Spon1, Bbx, Gm12940, Riok3, Rptor, Ccdc88a, Rmdn1, Abhd6, Sdk1, Pacsin2, Mbtd1, Ephb1, Clasp2, Pi4ka, Zfp692, Kcnip2, Mtif2, Fbln2, Syne1, Grik4, Dock11, Gpatch8, Rbfox2, Bcl6, Baiap2, Ramp1, Zc3h13, Lmo4, Dennd1b, Ube3c, Gfod1, Cap2, mt-Cytb, Arl15, Podxl2, Bcl11a, Iqsec3, Cyfip2, Slc25a42, Klhdc10, Cmip, Rian, Kidins220, Anxa11, Ntrk2, Sox11, Ap2b1, Comt, Stk3, Ablim3, Atp1b1, Enah, Slc24a2, Prox1, Spag9)
+
+EE_top100 <- Cs(Nrp1, AC149090.1, Pcdh7, Nrxn3, Tnr, C1ql3, Chst9, Malat1, Hspa5, Dgkb, Rgs6, Pde10a, Zbtb20, Hspa8, Ubash3b, Brinp1, Rimbp2, Chgb, Cdh10, Parp8, Hsp90b1, Mllt3, A330102I10Rik, Pcsk1n, Sparcl1, Map1b, Camk2a, Calr, Phf20l1, Cyp7b1, Clstn2, Prickle1, Kcnq3, Rnf112, Dlgap1, Trim9, Nrn1, Acvr1c, Syn3, Gabrb1, Fbxl7, Mical2, Arpp21, Pcsk2, Sntb2, Kirrel3, Gabbr2, Cdh9, Grm7, Anks1b, Prkag2, Nrg3, Csmd2, Dnajc1, Hectd2, Trpc4, Pdzd2, Mast4, Gm20642, Lrrtm3, Zeb2, Slc35f3, Sez6l, Trim2, Grin2a, Nr3c2, Tspan5, Maml2, Slc2a13, Cacna1c, Hsp90ab1, Itpr1, Atp2b1, Kcnip3, Ksr1, Focad, Tanc1, Arhgap39, Pitpnc1, Auts2, Npy, Acvr1, Dscam, Atp6v0b, Pcdh17, Prkca, Atp6v0a1, Unc79, Sorbs2, Myt1l, Trpm3, Adgrl3, Grm1, Caly, Map2, Sipa1l3, Polb, Cdh2, Tra2a, Cacna2d3)
+
+sobject <- AddModuleScore(sobject,
+                  features = list(EE_top500),
+                  name= "EE_top500_")
+
+sobject <- AddModuleScore(sobject,
+                  features = list(EE_top100),
+                  name= "EE_top100_")
+```
+
+
+Module scores - Dot Plot
+```{r}
+# module scores
+modules = Cs(EE_top100_1)
+
+dot.scale = 10 # max size of the dot
+scale.min = 0 #lower limit of % expressed
+scale.max = 100 #upper limit of % expressed
+col.min = -1 #lower limit of avg expression
+col.max = 1 #upper limit of avg expression
+
+Idents(sobject) = "condition"
+DotPlot(sobject, features = modules,
+        col.min = col.min, col.max = col.max, dot.scale = dot.scale, scale.min = scale.min, scale.max = scale.max, dot.min = 0.0) + 
+    theme(axis.text.x = element_text(angle = 40, vjust = 1.1, hjust=1.1, size = 18), #axis.text.x = element_text(angle = 0, vjust = 0.2, hjust=0.5, size = 18
+          axis.text.y = element_text(size = 18),
+          aspect.ratio=1.8, # sets square plot
+          axis.line = element_blank(), # hides axes and ticks
+          panel.border = element_rect(colour = "black", fill=NA, size=1)) + 
+          xlab("") + ylab("") + #coord_flip() 
+          #scale_colour_gradient2(low = "#000CFF", mid = "#FFFFFF", high = "#FF0000") +
+          scale_colour_gradient2(low = "#FFFFFF", mid = "#FFA7A7", high = "#FF0000") 
+
+Idents(sobject) = "Mouse_ID"
+DotPlot(sobject, features = modules,
+        col.min = 0, col.max = 1,
+        dot.min = 0.0) + 
+    theme(axis.text.x = element_text(angle = 0, vjust = 0.2, hjust=0.5, size = 18),
+          axis.text.y = element_text(size = 18),
+          aspect.ratio=1.2, # sets square plot
+          axis.line = element_blank(), # hides axes and ticks
+          panel.border = element_rect(colour = "black", fill=NA, size=1)) + 
+          xlab("") + ylab("") + #coord_flip() 
+          scale_colour_gradient2(high = "brown1") 
+```
+
+Get values from DotPlot
+```{r}
+Idents(sobject) = "Mouse_ID"
+
+p = DotPlot(sobject, features = modules)
+p$data
+
+# write to excel file
+p_data <- p$data
+file_path = "/Users/phinguyen/Downloads"
+
+#library(openxlsx)
+write.xlsx(p_data, file = file_path)
+```
+
+Module scores - Feature Plot
+```{r}
+Idents(sobject) = "condition"
+label = F
+repel = F
+label.size = 5
+pt.size = 3.5
+raster = F
+na_cutoff = 0.15
+max.cutoff = .5
+na_color = "grey75"
+
+features = Cs(RAG_1)
+
+DimPlot(sobject)
+
+FeaturePlot_scCustom(sobject, features = features,
+        label = label, repel = repel, label.size = label.size, pt.size = pt.size, order = T, na_cutoff = na_cutoff, max.cutoff=max.cutoff,
+        label.color = c("black"), na_color = na_color,
+        raster = raster) +
+              theme(aspect.ratio=1, # sets square plot
+              axis.title.x = element_text(hjust=0), axis.title.y = element_text(hjust=0), # adjust axes labels to corner
+              axis.line = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), # hides axes and ticks
+              panel.border = element_rect(colour = "black", fill=NA, size=1)) + # add border
+              labs(y= "UMAP 2", x = "UMAP 1")
+
+```
+
+Module scores - Violin Plots
+```{r}
+Idents(sobject) = "condition"
+levels(sobject)
+pt.size = 0.1
+
+feature = "RAG_1"
+
+VlnPlot(sobject, feature = feature, 
+        pt.size = pt.size, slot = 'data') + 
+    xlab("")
+
+VlnPlot(sobject, feature = feature, 
+        pt.size = pt.size, slot = 'scale.data') + 
+    xlab("")
+```
+

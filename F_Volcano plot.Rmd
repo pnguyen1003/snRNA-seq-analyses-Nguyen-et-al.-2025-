@@ -1,0 +1,125 @@
+---
+title: "ExtraDE_Plots_Volcano"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#install.packages("BiocManager")
+#BiocManager::install("Seurat")
+#BiocManager::install("ggplot2")
+#BiocManager::install("sctransform")
+#BiocManager::install("ggrastr")
+
+library(Seurat)
+library(ggplot2)
+library(dplyr)
+library(ape)
+library(cowplot)
+library(Matrix)
+library(EnhancedVolcano)
+library(knitr)
+library(readr)
+library(Hmisc)
+```
+
+
+*Load in DE spreadsheet*
+```{r}
+dir= "/Users/phinguyen/Library/CloudStorage/Dropbox/Hen Lab/Data/SingleCell RNA-seq/2_AllCells_Early-Late-Flx_June 2023/CellRanger-6.1.2/Spreadsheets/DGGCs/2_DGGCs__Flx_3wks vs Cort_Seurat.csv"
+
+de = read.csv(file.path(dir),stringsAsFactors = F) #any spreadsheet with gene symbols or other identifiers
+
+```
+
+
+*Volcano Plot*
+Vignette: https://www.bioconductor.org/packages/release/bioc/vignettes/EnhancedVolcano/inst/doc/EnhancedVolcano.html#introduction
+
+Set up parameter lines
+```{r}
+#Minimum fold change (1.15x or 15% increase is equal to log2(1.15) = ~0.2)
+minfc = 1.05 #1.15
+#Max adj. p value
+alpha = 10e-8 #1e-25
+#Clusters selected
+categories = levels(as.factor(de$cluster))
+#Genes to highlight
+ngenes = 10
+```
+
+
+Set up the spreadsheet for Volcano Plot
+```{r}
+
+colnames(de)[1] = "Genes"
+head(de)
+fc = de
+
+colorkeysdown = fc$Gene[fc$avg_log2FC < -log2(minfc) & fc$p_val_adj < alpha]
+colorkeysup = fc$Gene[fc$avg_log2FC > log2(minfc) & fc$p_val_adj < alpha]
+
+#Either highlight specific genes or pick the top genes in colorkeysup/down
+  top = fc[fc$p_val_adj<alpha,]
+  top = top[order(top$avg_log2FC),"Genes"]
+  highlight = c(head(top,ngenes),tail(top,ngenes))
+
+  allcolors = rep("darkgrey",length(fc$Gene))
+  names(allcolors) = fc$Gene
+  
+  allcolors[names(allcolors) %in% colorkeysup]= "brown2"
+  allcolors[names(allcolors) %in% colorkeysdown] = "cornflowerblue"
+  
+  #allcolors[names(allcolors) %in% highlight]= "yellow"
+
+  #names(allcolors)[allcolors == "yellow"] = "labelled"
+  names(allcolors)[allcolors == "brown2"] = "up"
+  names(allcolors)[allcolors == "darkgrey"] = "no sig change"
+  names(allcolors)[allcolors == "cornflowerblue"] = "down"
+```
+
+
+```{r}
+title = ""
+
+genes_of_interest = Cs(Bdnf, Sv2c, Syn3, Nrxn3, Sema3e, Ablim3, Sema5a, Slc30a3, Htr4, Adamts6, Calb1, Tnr, Camk2a)
+```
+
+*Print Volcano plots*
+```{r}
+Volcano <- EnhancedVolcano(fc,
+                lab = fc$Gene,
+                x = 'avg_log2FC',
+                y = 'p_val_adj',
+                xlim = c(-3, 4),
+                title = NULL,
+                subtitle = "",
+                legendPosition = 'none', # hide legend
+                pCutoff = alpha,
+                FCcutoff = log2(minfc),
+                col=c('black', 'black', 'black', 'red3'),
+                colCustom = allcolors,
+                gridlines.major = F,
+                gridlines.minor = F,
+                colAlpha = 1,
+                
+                pointSize = 1.0, # dot size
+                labSize = 4,  # label size
+                axisLabSize = 14, # axes lab size
+                drawConnectors = T,
+                boxedLabels = T,
+                lengthConnectors = unit(0.01, "npc"),
+                selectLab = genes_of_interest,
+                
+                border = 'full',
+                borderWidth = .5
+                ) + theme(aspect.ratio=.75)
+
+Volcano 
+```
+
+
+***********
